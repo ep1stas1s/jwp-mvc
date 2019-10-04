@@ -1,6 +1,10 @@
 package nextstep.mvc;
 
 import nextstep.mvc.asis.Controller;
+import nextstep.mvc.tobe.AnnotationHandlerMapping;
+import nextstep.mvc.tobe.HandlerExecution;
+import nextstep.mvc.tobe.JspView;
+import nextstep.mvc.tobe.ModelAndView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,14 +23,17 @@ public class DispatcherServlet extends HttpServlet {
     private static final String DEFAULT_REDIRECT_PREFIX = "redirect:";
 
     private HandlerMapping rm;
+    private AnnotationHandlerMapping annotationHandlerMapping;
 
-    public DispatcherServlet(HandlerMapping rm) {
+    public DispatcherServlet(HandlerMapping rm, AnnotationHandlerMapping annotationHandlerMapping) {
         this.rm = rm;
+        this.annotationHandlerMapping = annotationHandlerMapping;
     }
 
     @Override
     public void init() throws ServletException {
         rm.initialize();
+        annotationHandlerMapping.initialize();
     }
 
     @Override
@@ -34,14 +41,21 @@ public class DispatcherServlet extends HttpServlet {
         String requestUri = req.getRequestURI();
         logger.debug("Method : {}, Request URI : {}", req.getMethod(), requestUri);
 
-        Controller controller = rm.getHandler(requestUri);
+        HandlerExecution handler = annotationHandlerMapping.getHandler(req);
         try {
-            String viewName = controller.execute(req, resp);
-            move(viewName, req, resp);
-        } catch (Throwable e) {
-            logger.error("Exception : {}", e);
-            throw new ServletException(e.getMessage());
+            ModelAndView mav = handler.handle(req, resp);
+            move(((JspView) mav.getView()).getFilePath(), req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+//        Controller controller = rm.getHandler(requestUri);
+//        try {
+//            String viewName = controller.execute(req, resp);
+//            move(viewName, req, resp);
+//        } catch (Throwable e) {
+//            logger.error("Exception : {}", e);
+//            throw new ServletException(e.getMessage());
+//        }
     }
 
     private void move(String viewName, HttpServletRequest req, HttpServletResponse resp)
